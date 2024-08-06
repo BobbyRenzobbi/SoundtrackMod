@@ -12,31 +12,33 @@ using SoundtrackMod;
 using UnityEngine;
 using Comfort.Common;
 using System.Threading;
+using System.IO;
+using Newtonsoft.Json.Linq;
 
 namespace SoundtrackMod.Patches
 {
     internal class SoundtrackPatch : ModulePatch
     {
+        private static string[] clips;
+        
         public static string[] GetTrack()
         {
-
-            return new string[] { "aberration.ogg", "dw_dream.ogg", "dw_escape_from_a_dream.ogg", "dw_new_dawn.ogg", "dw_piotrek.ogg" };
+            return Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
         }
-        private static readonly string[] clips = GetTrack();
+        
         private static float trackLength = 0f;
-        public static Player GetYourPlayer()
-        {
-            GameWorld gameWorld = Singleton<GameWorld>.Instance;
-            return gameWorld.MainPlayer;
-        }
         public static void PlaySoundtrack()
         {
-            if (clips == null) return;
+            if (clips == null) 
+            {
+                Logger.LogInfo("No audio files found");
+                return;
+            }
             int rndNumber = UnityEngine.Random.Range(0, clips.Length);
             string clip = clips[rndNumber];
             AudioClip audioClip = Plugin.tracks[clip];
             trackLength = audioClip.length;
-            Singleton<BetterAudio>.Instance.PlayAtPoint(new Vector3(0, 0, 0), audioClip, 0, BetterAudio.AudioSourceGroupType.Nonspatial, 100, 0.1f, EOcclusionTest.None, null, false);
+            Singleton<BetterAudio>.Instance.PlayAtPoint(new Vector3(0, 0, 0), audioClip, 0, BetterAudio.AudioSourceGroupType.Nonspatial, 100, Plugin.musicVolume.Value, EOcclusionTest.None, null, false);
             Logger.LogInfo("Playing " + clip);
             Thread.Sleep(Convert.ToInt32((trackLength) * 1000));
             PlaySoundtrack();
@@ -50,6 +52,7 @@ namespace SoundtrackMod.Patches
         [PatchPostfix]
         static void Postfix()
         {
+            clips = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
             t1.Start();
         }
     }

@@ -9,11 +9,13 @@ using UnityEngine;
 using SoundtrackMod.Patches;
 using System.IO;
 using UnityEngine.Networking;
+using BepInEx.Configuration;
 namespace SoundtrackMod
 {
     [BepInPlugin("BobbyRenzobbi.SoundtrackMod", "SoundtrackMod", "0.0.1")]
     public class Plugin : BaseUnityPlugin
     {
+        public static ConfigEntry<float> musicVolume { get; set; }
         private async Task<AudioClip> RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
@@ -65,6 +67,10 @@ namespace SoundtrackMod
 
         private void Awake()
         {
+            string settings = "Soundtrack Settings";
+
+            musicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.03f, new ConfigDescription("This slider will control the volume of the music heard in raid", new AcceptableValueRange<float>(0.001f, 1f)));
+
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
             try
