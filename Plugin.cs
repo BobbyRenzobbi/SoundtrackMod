@@ -11,12 +11,40 @@ using UnityEngine.Networking;
 using BepInEx.Configuration;
 using EFT;
 using Comfort.Common;
+using System.Collections;
+
 namespace SoundtrackMod
 {
+    [RequireComponent(typeof(AudioSource))]
+    public class Audio : MonoBehaviour
+    {
+        public static AudioSource myaudioSource;
+
+        public static void SetClip(AudioClip clip)
+        {
+            myaudioSource.clip = clip;
+            Plugin.LogSource.LogInfo("Set myaudioSource.clip");
+
+        }
+        public static bool AudioIsPlaying(AudioClip clip)
+        {
+            return myaudioSource.isPlaying;
+        }
+        public static void AdjustVolume(AudioClip clip, float volume)
+        {
+            myaudioSource.volume = volume;
+        }
+        public static float GetCurrentLength()
+        {
+            return myaudioSource.clip.length;
+        }
+
+    }
+
     [BepInPlugin("BobbyRenzobbi.SoundtrackMod", "SoundtrackMod", "0.0.1")]
     public class Plugin : BaseUnityPlugin
     {
-        public static ConfigEntry<float> musicVolume { get; set; }
+        public static ConfigEntry<float> MusicVolume { get; set; }
         private async Task<AudioClip> RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
@@ -73,17 +101,18 @@ namespace SoundtrackMod
         private static float trackLength = 0f;
         public static void PlaySoundtrack()
         {
-            
+
         }
         private void Awake()
         {
             clips = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
             string settings = "Soundtrack Settings";
 
-            musicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
+            MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
 
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
+            
             try
             {
                 LoadAudioClips();
@@ -125,21 +154,34 @@ namespace SoundtrackMod
                 trackTimer += Time.deltaTime;
                 if (trackTimer > trackLength)
                 {
+                    
                     LogSource.LogInfo("trackTimer: " + trackTimer + " was greater than trackLength: " + trackLength);
                     if (clips == null)
                     {
                         LogSource.LogInfo("No audio files found");
                         return;
                     }
+                    if (Audio.myaudioSource == null)
+                    {
+                        try
+                        {
+                            Audio.myaudioSource = gameObject.GetOrAddComponent<AudioSource>();
+                            LogSource.LogInfo("myaudioSource has been set");
+                        }
+                        catch (Exception ex)
+                        {
+                            LogSource.LogInfo(ex.Message);
+                        }
+                    }
                     rndNumber = UnityEngine.Random.Range(0, clips.Length);
                     LogSource.LogInfo("Random number selected");
                     clip = clips[rndNumber];
                     LogSource.LogInfo("Random clip selected");
-                    AudioClip audioClip = tracks[clip];
+                    Audio.SetClip(tracks[clip]);
                     LogSource.LogInfo("audioClip updated");
-                    Singleton<BetterAudio>.Instance.PlayAtPoint(new Vector3(0, 0, 0), audioClip, 0, BetterAudio.AudioSourceGroupType.Nonspatial, 100, musicVolume.Value, EOcclusionTest.None, null, false);
-                    LogSource.LogInfo("Playing " + clip);
-                    trackLength = audioClip.length;
+                    Singleton<BetterAudio>.Instance.PlayAtPoint(new Vector3(0, 0, 0), Audio.myaudioSource.clip, 0, BetterAudio.AudioSourceGroupType.Nonspatial, 100, MusicVolume.Value, EOcclusionTest.None, null, false);
+                    LogSource.LogInfo("playing track");
+                    trackLength = Audio.GetCurrentLength();
                     LogSource.LogInfo("trackLength updated");
                     trackTimer = 0f;
                 }
