@@ -12,6 +12,7 @@ using BepInEx.Configuration;
 using EFT;
 using Comfort.Common;
 using System.Collections;
+using System.Diagnostics;
 
 namespace SoundtrackMod
 {
@@ -109,7 +110,7 @@ namespace SoundtrackMod
             string settings = "Soundtrack Settings";
 
             MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
-
+            timer = new Stopwatch();
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
             
@@ -122,25 +123,28 @@ namespace SoundtrackMod
                 Logger.LogError(exception);
             }
         }
-
-        private static float trackTimer = 0f;
         private static int rndNumber = 0;
         private static string clip = "";
+        private static Stopwatch timer;
+        
 
         private void Update()
         {
-            try
+            if (Audio.myaudioSource != null)
             {
-                Audio.AdjustVolume(MusicVolume.Value);
-            }
-            catch (Exception exception)
-            {
-                LogSource.LogError(exception);
+                try
+                {
+                    Audio.AdjustVolume(MusicVolume.Value);
+                }
+                catch (Exception exception)
+                {
+                    LogSource.LogError(exception);
+                }
             }
             if (Singleton<GameWorld>.Instance == null)
             {
                 HasReloadedAudio = false;
-                trackTimer = 0f;
+                timer.Restart();
                 trackLength = 0f;
             }
             else
@@ -158,11 +162,10 @@ namespace SoundtrackMod
                         LogSource.LogError(ex);
                     }
                 }
-                trackTimer += Time.deltaTime;
-                if (trackTimer > trackLength)
+                if ((timer.ElapsedMilliseconds / 1000) > trackLength)
                 {
                     
-                    LogSource.LogInfo("trackTimer: " + trackTimer + " was greater than trackLength: " + trackLength);
+                    LogSource.LogInfo("trackTimer: " + (timer.ElapsedMilliseconds / 1000) + " was greater than trackLength: " + trackLength);
                     if (clips == null)
                     {
                         LogSource.LogInfo("No audio files found");
@@ -190,11 +193,11 @@ namespace SoundtrackMod
                     LogSource.LogInfo("playing " + Audio.myaudioSource.clip);
                     trackLength = Audio.GetCurrentLength();
                     LogSource.LogInfo("trackLength updated");
-                    trackTimer = 0f;
+                    timer.Restart();
                 }
                 else
                 {
-                    LogSource.LogInfo("trackTimer is only at " + trackTimer + " while trackLength is at " + trackLength);
+                    LogSource.LogInfo("trackTimer is only at " + (timer.ElapsedMilliseconds / 1000) + " while trackLength is at " + trackLength);
                 }
             }
         }
