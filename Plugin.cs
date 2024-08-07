@@ -30,7 +30,7 @@ namespace SoundtrackMod
         {
             return myaudioSource.isPlaying;
         }
-        public static void AdjustVolume(AudioClip clip, float volume)
+        public static void AdjustVolume(float volume)
         {
             myaudioSource.volume = volume;
         }
@@ -129,7 +129,14 @@ namespace SoundtrackMod
 
         private void Update()
         {
-
+            try
+            {
+                Audio.AdjustVolume(MusicVolume.Value);
+            }
+            catch (Exception exception)
+            {
+                LogSource.LogError(exception);
+            }
             if (Singleton<GameWorld>.Instance == null)
             {
                 HasReloadedAudio = false;
@@ -179,8 +186,8 @@ namespace SoundtrackMod
                     LogSource.LogInfo("Random clip selected");
                     Audio.SetClip(tracks[clip]);
                     LogSource.LogInfo("audioClip updated");
-                    Singleton<BetterAudio>.Instance.PlayAtPoint(new Vector3(0, 0, 0), Audio.myaudioSource.clip, 0, BetterAudio.AudioSourceGroupType.Nonspatial, 100, MusicVolume.Value, EOcclusionTest.None, null, false);
-                    LogSource.LogInfo("playing track");
+                    Audio.myaudioSource.Play();
+                    LogSource.LogInfo("playing " + Audio.myaudioSource.clip);
                     trackLength = Audio.GetCurrentLength();
                     LogSource.LogInfo("trackLength updated");
                     trackTimer = 0f;
