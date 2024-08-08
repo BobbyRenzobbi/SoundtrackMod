@@ -21,8 +21,6 @@ namespace SoundtrackMod
         public static void SetClip(AudioClip clip)
         {
             myaudioSource.clip = clip;
-            Plugin.LogSource.LogInfo("Set myaudioSource.clip");
-
         }
         public static bool AudioIsPlaying(AudioClip clip)
         {
@@ -156,13 +154,10 @@ namespace SoundtrackMod
             }
             if (currentTimer <= trackLength)
             {
-                LogSource.LogInfo("trackTimer is only at " + currentTimer + " while trackLength is at " + trackLength);
                 return;
             }
-            LogSource.LogInfo("trackTimer: " + currentTimer + " was greater than trackLength: " + trackLength);
             if (clips == null)
             {
-                LogSource.LogInfo("No audio files found");
                 return;
             }
             if (Audio.myaudioSource == null)
@@ -170,7 +165,6 @@ namespace SoundtrackMod
                 try
                 {
                     Audio.myaudioSource = gameObject.GetOrAddComponent<AudioSource>();
-                    LogSource.LogInfo("myaudioSource has been set");
                 }
                 catch (Exception ex)
                 {
@@ -178,15 +172,11 @@ namespace SoundtrackMod
                 }
             }
             rndNumber = UnityEngine.Random.Range(0, clips.Length);
-            LogSource.LogInfo("Random number selected");
             clip = clips[rndNumber];
-            LogSource.LogInfo("Random clip selected");
             Audio.SetClip(tracks[clip]);
-            LogSource.LogInfo("audioClip updated");
             Audio.myaudioSource.Play();
             LogSource.LogInfo("playing " + clip);
             trackLength = Audio.GetCurrentLength();
-            LogSource.LogInfo("trackLength updated");
             timer.Restart();
         }
     }
