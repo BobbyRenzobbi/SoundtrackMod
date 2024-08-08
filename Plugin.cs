@@ -22,10 +22,6 @@ namespace SoundtrackMod
         {
             myaudioSource.clip = clip;
         }
-        public static bool AudioIsPlaying(AudioClip clip)
-        {
-            return myaudioSource.isPlaying;
-        }
         public static void AdjustVolume(float volume)
         {
             myaudioSource.volume = volume;
