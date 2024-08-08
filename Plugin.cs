@@ -3,7 +3,6 @@ using BepInEx.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using System.IO;
@@ -11,7 +10,6 @@ using UnityEngine.Networking;
 using BepInEx.Configuration;
 using EFT;
 using Comfort.Common;
-using System.Collections;
 using System.Diagnostics;
 
 namespace SoundtrackMod
@@ -20,7 +18,6 @@ namespace SoundtrackMod
     public class Audio : MonoBehaviour
     {
         public static AudioSource myaudioSource;
-
         public static void SetClip(AudioClip clip)
         {
             myaudioSource.clip = clip;
@@ -39,13 +36,11 @@ namespace SoundtrackMod
         {
             return myaudioSource.clip.length;
         }
-
     }
 
     [BepInPlugin("BobbyRenzobbi.SoundtrackMod", "SoundtrackMod", "0.0.1")]
     public class Plugin : BaseUnityPlugin
     {
-        public static ConfigEntry<float> MusicVolume { get; set; }
         private async Task<AudioClip> RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
@@ -79,9 +74,11 @@ namespace SoundtrackMod
                 return audioclip;
             }
         }
+
         public static bool HasReloadedAudio = false;
         public static Dictionary<string, AudioClip> tracks = new Dictionary<string, AudioClip>();
         public static ManualLogSource LogSource;
+        public static ConfigEntry<float> MusicVolume { get; set; }
         private async void LoadAudioClips()
         {
             string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
@@ -94,26 +91,20 @@ namespace SoundtrackMod
             }
             HasReloadedAudio = true;
         }
-        private static string[] clips;
+        
         public static string[] GetTrack()
         {
-            return Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
+            return Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
         }
-        private static float trackLength = 0f;
-        public static void PlaySoundtrack()
-        {
 
-        }
         private void Awake()
         {
-            clips = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
+            clips = GetTrack();
             string settings = "Soundtrack Settings";
-
             MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
             timer = new Stopwatch();
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
-            
             try
             {
                 LoadAudioClips();
@@ -123,10 +114,12 @@ namespace SoundtrackMod
                 Logger.LogError(exception);
             }
         }
+
         private static int rndNumber = 0;
         private static string clip = "";
         private static Stopwatch timer;
-        
+        private static float trackLength = 0f;
+        private static string[] clips;
 
         private void Update()
         {
@@ -146,60 +139,55 @@ namespace SoundtrackMod
                 HasReloadedAudio = false;
                 timer.Restart();
                 trackLength = 0f;
+                return;
             }
-            else
+            float currentTimer = (timer.ElapsedMilliseconds / 1000);
+            if (!HasReloadedAudio)
             {
-
-                if (!HasReloadedAudio)
+                try
                 {
-                    try
-                    {
-                        LoadAudioClips();
-                        HasReloadedAudio = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogSource.LogError(ex);
-                    }
+                    LoadAudioClips();
+                    HasReloadedAudio = true;
                 }
-                if ((timer.ElapsedMilliseconds / 1000) > trackLength)
+                catch (Exception ex)
                 {
-                    
-                    LogSource.LogInfo("trackTimer: " + (timer.ElapsedMilliseconds / 1000) + " was greater than trackLength: " + trackLength);
-                    if (clips == null)
-                    {
-                        LogSource.LogInfo("No audio files found");
-                        return;
-                    }
-                    if (Audio.myaudioSource == null)
-                    {
-                        try
-                        {
-                            Audio.myaudioSource = gameObject.GetOrAddComponent<AudioSource>();
-                            LogSource.LogInfo("myaudioSource has been set");
-                        }
-                        catch (Exception ex)
-                        {
-                            LogSource.LogInfo(ex.Message);
-                        }
-                    }
-                    rndNumber = UnityEngine.Random.Range(0, clips.Length);
-                    LogSource.LogInfo("Random number selected");
-                    clip = clips[rndNumber];
-                    LogSource.LogInfo("Random clip selected");
-                    Audio.SetClip(tracks[clip]);
-                    LogSource.LogInfo("audioClip updated");
-                    Audio.myaudioSource.Play();
-                    LogSource.LogInfo("playing " + Audio.myaudioSource.clip);
-                    trackLength = Audio.GetCurrentLength();
-                    LogSource.LogInfo("trackLength updated");
-                    timer.Restart();
-                }
-                else
-                {
-                    LogSource.LogInfo("trackTimer is only at " + (timer.ElapsedMilliseconds / 1000) + " while trackLength is at " + trackLength);
+                    LogSource.LogError(ex);
                 }
             }
+            if (currentTimer <= trackLength)
+            {
+                LogSource.LogInfo("trackTimer is only at " + currentTimer + " while trackLength is at " + trackLength);
+                return;
+            }
+            LogSource.LogInfo("trackTimer: " + currentTimer + " was greater than trackLength: " + trackLength);
+            if (clips == null)
+            {
+                LogSource.LogInfo("No audio files found");
+                return;
+            }
+            if (Audio.myaudioSource == null)
+            {
+                try
+                {
+                    Audio.myaudioSource = gameObject.GetOrAddComponent<AudioSource>();
+                    LogSource.LogInfo("myaudioSource has been set");
+                }
+                catch (Exception ex)
+                {
+                    LogSource.LogInfo(ex.Message);
+                }
+            }
+            rndNumber = UnityEngine.Random.Range(0, clips.Length);
+            LogSource.LogInfo("Random number selected");
+            clip = clips[rndNumber];
+            LogSource.LogInfo("Random clip selected");
+            Audio.SetClip(tracks[clip]);
+            LogSource.LogInfo("audioClip updated");
+            Audio.myaudioSource.Play();
+            LogSource.LogInfo("playing " + clip);
+            trackLength = Audio.GetCurrentLength();
+            LogSource.LogInfo("trackLength updated");
+            timer.Restart();
         }
     }
 }
