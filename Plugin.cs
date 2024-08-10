@@ -27,28 +27,15 @@ namespace SoundtrackMod
             myaudioSource.volume = volume;
         }
     }
-
     [BepInPlugin("BobbyRenzobbi.SoundtrackMod", "SoundtrackMod", "0.0.1")]
     public class Plugin : BaseUnityPlugin
     {
-        //RequestAudioClip method taken from Realism mod
-        private async Task<AudioClip> RequestAudioClip(string path)
+        private static AudioClip unityAudioClip;
+        private async void RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
-            AudioType audioType = AudioType.WAV;
-            switch (extension)
-            {
-                case ".wav":
-                    audioType = AudioType.WAV;
-                    break;
-                case ".ogg":
-                    audioType = AudioType.OGGVORBIS;
-                    break;
-                case ".mp3":
-                    audioType = AudioType.MPEG;
-                    break;
-            }
-            UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip(path, audioType);
+            Dictionary<string, AudioType> audioType = new Dictionary<string, AudioType>{[".wav"] = AudioType.WAV, [".ogg"] = AudioType.OGGVORBIS, [".mp3"] = AudioType.MPEG};
+            UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip(path, audioType[extension]);
             UnityWebRequestAsyncOperation sendWeb = uwr.SendWebRequest();
 
             while (!sendWeb.isDone)
@@ -57,33 +44,32 @@ namespace SoundtrackMod
             if (uwr.isNetworkError || uwr.isHttpError)
             {
                 Logger.LogError("Soundtrack Mod: Failed To Fetch Audio Clip");
-                return null;
+                return;
             }
             else
             {
-                AudioClip audioclip = DownloadHandlerAudioClip.GetContent(uwr);
-                return audioclip;
+                unityAudioClip = DownloadHandlerAudioClip.GetContent(uwr);
+                return;
             }
         }
 
-        public static bool HasReloadedAudio = false;
         public static Dictionary<string, AudioClip> tracks = new Dictionary<string, AudioClip>();
         public static ManualLogSource LogSource;
+        private static string track = "";
+        private static string trackPath = "";
         public static ConfigEntry<float> MusicVolume { get; set; }
-
-        private async void LoadAudioClips()
+        private void LoadAudioClips()
         {
             string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
 
             tracks.Clear();
-
-            foreach (string fileDir in musicTracks)
-            {
-                tracks[Path.GetFileName(fileDir)] = await RequestAudioClip(fileDir);
-            }
-            HasReloadedAudio = true;
+            rndNumber = UnityEngine.Random.Range(0, musicTracks.Length - 1);
+            track = musicTracks[rndNumber];
+            trackPath = Path.GetFileName(track);
+            RequestAudioClip(track);
+            tracks[trackPath] = unityAudioClip;
         }
-        
+
         public static string[] GetTrack()
         {
             return Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
@@ -92,23 +78,16 @@ namespace SoundtrackMod
         private void Awake()
         {
             clips = GetTrack();
+            LoadAudioClips();
             string settings = "Soundtrack Settings";
             MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
-            try
-            {
-                LoadAudioClips();
-            }
-            catch (Exception exception)
-            {
-                Logger.LogError(exception);
-            }
         }
 
         private static int rndNumber = 0;
-        private static string clip = "";
         private static string[] clips;
+        private static bool HasReloadedAudio = true;
 
         private void Update()
         {
@@ -123,25 +102,13 @@ namespace SoundtrackMod
                     LogSource.LogError(exception);
                 }
             }
+            if (clips == null)
+            {
+                return;
+            }
             if (Singleton<GameWorld>.Instance == null)
             {
                 HasReloadedAudio = false;
-                return;
-            }
-            if (!HasReloadedAudio)
-            {
-                try
-                {
-                    LoadAudioClips();
-                    HasReloadedAudio = true;
-                }
-                catch (Exception ex)
-                {
-                    LogSource.LogError(ex);
-                }
-            }
-            if (clips == null)
-            {
                 return;
             }
             if (Audio.myaudioSource == null)
@@ -155,15 +122,27 @@ namespace SoundtrackMod
                     LogSource.LogInfo(ex.Message);
                 }
             }
+            if (Singleton<GameWorld>.Instance.MainPlayer == null)
+            {
+                return;
+            }
             if (Audio.myaudioSource.isPlaying)
             {
                 return;
             }
-            rndNumber = UnityEngine.Random.Range(0, clips.Length);
-            clip = clips[rndNumber];
-            Audio.SetClip(tracks[clip]);
+            if (!HasReloadedAudio)
+            {
+                LoadAudioClips();
+                HasReloadedAudio = true;
+            }
+            if (tracks[trackPath] == null)
+            {
+                return;
+            }
+            Audio.SetClip(tracks[trackPath]);
             Audio.myaudioSource.Play();
-            LogSource.LogInfo("playing " + clip);
+            LogSource.LogInfo("playing " + trackPath);
+            HasReloadedAudio = false;
         }
     }
 }
