@@ -26,15 +26,12 @@ namespace SoundtrackMod
         {
             myaudioSource.volume = volume;
         }
-        public static float GetCurrentLength()
-        {
-            return myaudioSource.clip.length;
-        }
     }
 
     [BepInPlugin("BobbyRenzobbi.SoundtrackMod", "SoundtrackMod", "0.0.1")]
     public class Plugin : BaseUnityPlugin
     {
+        //RequestAudioClip method taken from Realism mod
         private async Task<AudioClip> RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
@@ -73,6 +70,7 @@ namespace SoundtrackMod
         public static Dictionary<string, AudioClip> tracks = new Dictionary<string, AudioClip>();
         public static ManualLogSource LogSource;
         public static ConfigEntry<float> MusicVolume { get; set; }
+
         private async void LoadAudioClips()
         {
             string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
@@ -96,7 +94,6 @@ namespace SoundtrackMod
             clips = GetTrack();
             string settings = "Soundtrack Settings";
             MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
-            timer = new Stopwatch();
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
             try
@@ -111,8 +108,6 @@ namespace SoundtrackMod
 
         private static int rndNumber = 0;
         private static string clip = "";
-        private static Stopwatch timer;
-        private static float trackLength = 0f;
         private static string[] clips;
 
         private void Update()
@@ -131,11 +126,8 @@ namespace SoundtrackMod
             if (Singleton<GameWorld>.Instance == null)
             {
                 HasReloadedAudio = false;
-                timer.Restart();
-                trackLength = 0f;
                 return;
             }
-            float currentTimer = (timer.ElapsedMilliseconds / 1000);
             if (!HasReloadedAudio)
             {
                 try
@@ -147,10 +139,6 @@ namespace SoundtrackMod
                 {
                     LogSource.LogError(ex);
                 }
-            }
-            if (currentTimer <= trackLength)
-            {
-                return;
             }
             if (clips == null)
             {
@@ -167,13 +155,15 @@ namespace SoundtrackMod
                     LogSource.LogInfo(ex.Message);
                 }
             }
+            if (Audio.myaudioSource.isPlaying)
+            {
+                return;
+            }
             rndNumber = UnityEngine.Random.Range(0, clips.Length);
             clip = clips[rndNumber];
             Audio.SetClip(tracks[clip]);
             Audio.myaudioSource.Play();
             LogSource.LogInfo("playing " + clip);
-            trackLength = Audio.GetCurrentLength();
-            timer.Restart();
         }
     }
 }
