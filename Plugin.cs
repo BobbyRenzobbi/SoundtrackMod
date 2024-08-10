@@ -80,7 +80,7 @@ namespace SoundtrackMod
             clips = GetTrack();
             LoadAudioClips();
             string settings = "Soundtrack Settings";
-            MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid (This currently does not affect a track if it is already playing)", new AcceptableValueRange<float>(0.001f, 1f)));
+            MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid", new AcceptableValueRange<float>(0.001f, 1f)));
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
         }
