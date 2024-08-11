@@ -10,7 +10,6 @@ using UnityEngine.Networking;
 using BepInEx.Configuration;
 using EFT;
 using Comfort.Common;
-using System.Diagnostics;
 
 namespace SoundtrackMod
 {
@@ -31,6 +30,7 @@ namespace SoundtrackMod
     public class Plugin : BaseUnityPlugin
     {
         private static AudioClip unityAudioClip;
+        private static System.Random rand = new System.Random();
         private async void RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
@@ -68,7 +68,7 @@ namespace SoundtrackMod
             string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
 
             tracks.Clear();
-            rndNumber = UnityEngine.Random.Range(0, musicTracks.Length);
+            rndNumber = rand.Next(musicTracks.Length);
             track = musicTracks[rndNumber];
             trackPath = Path.GetFileName(track);
             RequestAudioClip(track);
