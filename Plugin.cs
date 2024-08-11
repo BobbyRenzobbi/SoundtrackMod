@@ -68,7 +68,7 @@ namespace SoundtrackMod
             string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
 
             tracks.Clear();
-            rndNumber = UnityEngine.Random.Range(0, musicTracks.Length - 1);
+            rndNumber = UnityEngine.Random.Range(0, musicTracks.Length);
             track = musicTracks[rndNumber];
             trackPath = Path.GetFileName(track);
             RequestAudioClip(track);
