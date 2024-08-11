@@ -34,7 +34,12 @@ namespace SoundtrackMod
         private async void RequestAudioClip(string path)
         {
             string extension = Path.GetExtension(path);
-            Dictionary<string, AudioType> audioType = new Dictionary<string, AudioType>{[".wav"] = AudioType.WAV, [".ogg"] = AudioType.OGGVORBIS, [".mp3"] = AudioType.MPEG};
+            Dictionary<string, AudioType> audioType = new Dictionary<string, AudioType>
+            {
+                [".wav"] = AudioType.WAV,
+                [".ogg"] = AudioType.OGGVORBIS,
+                [".mp3"] = AudioType.MPEG
+            };
             UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip(path, audioType[extension]);
             UnityWebRequestAsyncOperation sendWeb = uwr.SendWebRequest();
 
@@ -80,7 +85,7 @@ namespace SoundtrackMod
             clips = GetTrack();
             LoadAudioClips();
             string settings = "Soundtrack Settings";
-            MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid", new AcceptableValueRange<float>(0.001f, 1f)));
+            MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid", new AcceptableValueRange<float>(0f, 1f)));
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
         }
@@ -106,7 +111,7 @@ namespace SoundtrackMod
             {
                 return;
             }
-            if (Singleton<GameWorld>.Instance == null)
+            if (Singleton<GameWorld>.Instance == null || (Singleton<GameWorld>.Instance?.MainPlayer is HideoutPlayer))
             {
                 HasReloadedAudio = false;
                 return;
