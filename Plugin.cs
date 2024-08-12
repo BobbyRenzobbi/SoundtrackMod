@@ -62,39 +62,44 @@ namespace SoundtrackMod
         public static ManualLogSource LogSource;
         private static string track = "";
         private static string trackPath = "";
+        private static List<string> trackList = new List<string>();
+        private static List<string> unPlayedTrackList = new List<string>();
+        private static string lastTrack = "";
+        private static int rndNumber = 0;
         public static ConfigEntry<float> MusicVolume { get; set; }
-        private void LoadAudioClips()
+        private void LoadNextTrack()
         {
-            string[] musicTracks = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds");
-
+            if (unPlayedTrackList.IsNullOrEmpty())
+            {
+                unPlayedTrackList.AddRange(trackList);
+            }
             tracks.Clear();
-            rndNumber = rand.Next(musicTracks.Length);
-            track = musicTracks[rndNumber];
+
+            do
+            {
+                rndNumber = rand.Next(unPlayedTrackList.Count);
+                track = unPlayedTrackList[rndNumber];
+            } 
+            while ((track == lastTrack) && trackList.Count > 1);
+
+            unPlayedTrackList.Remove(track);
+            lastTrack = track;
             trackPath = Path.GetFileName(track);
             RequestAudioClip(track);
+            LogSource.LogInfo("loaded " + trackPath);
             tracks[trackPath] = unityAudioClip;
-        }
-
-        public static string[] GetTrack()
-        {
-            return Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds").Select(file => Path.GetFileName(file)).ToArray();
         }
 
         private void Awake()
         {
-            clips = GetTrack();
-            LoadAudioClips();
+            trackList.AddRange(Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory + "\\BepInEx\\plugins\\Soundtrack\\sounds"));
             string settings = "Soundtrack Settings";
             MusicVolume = Config.Bind<float>(settings, "In-raid music volume", 0.025f, new ConfigDescription("Volume of the music heard in raid", new AcceptableValueRange<float>(0f, 1f)));
             LogSource = Logger;
             LogSource.LogInfo("plugin loaded!");
         }
 
-        private static int rndNumber = 0;
-        private static string[] clips;
-        private static bool HasReloadedAudio = true;
-
-        private void Update()
+        private void LateUpdate()
         {
             if (Audio.myaudioSource != null)
             {
@@ -107,13 +112,12 @@ namespace SoundtrackMod
                     LogSource.LogError(exception);
                 }
             }
-            if (clips == null)
+            if (trackList.IsNullOrEmpty())
             {
                 return;
             }
             if (Singleton<GameWorld>.Instance == null || (Singleton<GameWorld>.Instance?.MainPlayer is HideoutPlayer))
             {
-                HasReloadedAudio = false;
                 return;
             }
             if (Audio.myaudioSource == null)
@@ -131,23 +135,12 @@ namespace SoundtrackMod
             {
                 return;
             }
-            if (Audio.myaudioSource.isPlaying)
+            if (!Audio.myaudioSource.isPlaying)
             {
-                return;
+                LoadNextTrack();
+                Audio.SetClip(tracks[trackPath]);
+                Audio.myaudioSource.Play();
             }
-            if (!HasReloadedAudio)
-            {
-                LoadAudioClips();
-                HasReloadedAudio = true;
-            }
-            if (tracks[trackPath] == null)
-            {
-                return;
-            }
-            Audio.SetClip(tracks[trackPath]);
-            Audio.myaudioSource.Play();
-            LogSource.LogInfo("playing " + trackPath);
-            HasReloadedAudio = false;
         }
     }
 }
